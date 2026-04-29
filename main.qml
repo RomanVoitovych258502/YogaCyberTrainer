@@ -1,22 +1,29 @@
-import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 
 ApplicationWindow {
     id: window
     visible: true
     width: 1050
     height: 700
-    title: "Test"
+    title: "test z kamerka"
     color: "#131316"
 
     QtObject {
         id: theme
         property color sidebar: "#1c1c21"
         property color blurple: "#5865F2"
-        property color darkBtn: "#2b2d31"
-        property string fontMain: "Segoe UI"
-        property string fontTitle: "Segoe UI Black"
+    }
+
+    Connections {
+        target: App
+        function onNavRequested(page) {
+            if(loader.source.toString().indexOf("TrainingScreen") !== -1 && page !== "TrainingScreen.qml") {
+                TrainingCtrl.stopTraining()
+            }
+            loader.source = page
+        }
     }
 
     RowLayout {
@@ -33,30 +40,40 @@ ApplicationWindow {
                 spacing: 30
 
                 Button {
-                    width: 64
-                    height: 64
-                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
-                    onClicked: App.navRequested("MenuScreen.qml")
+                    text: "🏠"
+                    font.pixelSize: 24
+                    background: Rectangle { color: parent.hovered ? theme.blurple : "transparent"; radius: 15 }
+                    onClicked: App.navRequested("TrainingScreen.qml")
+                }
+
+                Button {
+                    text: "🏆"
+                    font.pixelSize: 24
+                    background: Rectangle { color: parent.hovered ? theme.blurple : "transparent"; radius: 15 }
+                    onClicked: console.log("Kliknięto rekordy (Puste)")
                 }
                 Button {
-                    width: 64
-                    height: 64
-                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
-                    onClicked: App.navRequested("ResultsScreen.qml")
+                    text: "💬"
+                    font.pixelSize: 24
+                    background: Rectangle { color: parent.hovered ? theme.blurple : "transparent"; radius: 15 }
+                    onClicked: console.log("Kliknięto chat (Puste)")
                 }
                 Button {
-                    width: 64
-                    height: 64
-                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
-                    onClicked: App.navRequested("ChatScreen.qml")
-                }
-                Button {
-                    width: 64
-                    height: 64
-                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
-                    onClicked: App.navRequested("SettingsScreen.qml")
+                    text: "⚙️"
+                    font.pixelSize: 24
+                    background: Rectangle { color: parent.hovered ? theme.blurple : "transparent"; radius: 15 }
+                    onClicked: console.log("Kliknięto ustawienia (Puste)")
                 }
             }
+        }
+
+        Loader {
+            id: loader
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.margins: 20
+
+            source: "TrainingScreen.qml"
         }
     }
 }
