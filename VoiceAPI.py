@@ -12,7 +12,7 @@ class VoiceAssistant:
         self.commands = commands
         self.language = language
         self.running = False
-        self.model = WhisperModel("base", compute_type="int8")
+        self.model = WhisperModel("base", device="cpu", compute_type="int8")
         self.texts = self.load_texts(texts_file)
         self.voice = "pl-PL-MarekNeural" if language == "pl" else "en-US-GuyNeural"
 
