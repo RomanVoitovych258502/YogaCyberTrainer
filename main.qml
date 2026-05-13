@@ -85,31 +85,6 @@ ApplicationWindow {
                         onClicked: changePage(model.source)
                     }
                 }
-
-                Button {
-                    width: 64
-                    height: 64
-                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
-                    onClicked: App.navRequested("MenuScreen.qml")
-                }
-                Button {
-                    width: 64
-                    height: 64
-                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
-                    onClicked: App.navRequested("ResultsScreen.qml")
-                }
-                Button {
-                    width: 64
-                    height: 64
-                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
-                    onClicked: App.navRequested("ChatScreen.qml")
-                }
-                Button {
-                    width: 64
-                    height: 64
-                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
-                    onClicked: App.navRequested("SettingsScreen.qml")
-                }
             }
         }
 
