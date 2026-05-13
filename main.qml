@@ -16,6 +16,8 @@ ApplicationWindow {
     function changePage(newPage) {
         if (activePage === newPage) return;
 
+        console.log("Otworzono " + newPage);
+
         activePage = newPage;
         pendingPage = newPage;
         fadeOut.restart();
@@ -35,6 +37,16 @@ ApplicationWindow {
         property color darkBtn: "#2b2d31"
         property string fontMain: "Segoe UI"
         property string fontTitle: "Segoe UI Black"
+    }
+
+    Connections {
+        target: App
+//       function onNavRequested(page) {
+//           if(loader.source.toString().indexOf("TrainingScreen") !== -1 && page !== "TrainingScreen.qml") {
+//               TrainingCtrl.stopTraining()
+//           }
+//           loader.source = page
+//       }
     }
 
     RowLayout {
@@ -72,6 +84,31 @@ ApplicationWindow {
 
                         onClicked: changePage(model.source)
                     }
+                }
+
+                Button {
+                    width: 64
+                    height: 64
+                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
+                    onClicked: App.navRequested("MenuScreen.qml")
+                }
+                Button {
+                    width: 64
+                    height: 64
+                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
+                    onClicked: App.navRequested("ResultsScreen.qml")
+                }
+                Button {
+                    width: 64
+                    height: 64
+                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
+                    onClicked: App.navRequested("ChatScreen.qml")
+                }
+                Button {
+                    width: 64
+                    height: 64
+                    background: Rectangle { color: parent.hovered ? theme.blurple : theme.darkBtn; radius: 15 }
+                    onClicked: App.navRequested("SettingsScreen.qml")
                 }
             }
         }
