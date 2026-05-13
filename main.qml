@@ -18,12 +18,12 @@ ApplicationWindow {
 
     Connections {
         target: App
-        function onNavRequested(page) {
-            if(loader.source.toString().indexOf("TrainingScreen") !== -1 && page !== "TrainingScreen.qml") {
-                TrainingCtrl.stopTraining()
-            }
-            loader.source = page
-        }
+//       function onNavRequested(page) {
+//           if(loader.source.toString().indexOf("TrainingScreen") !== -1 && page !== "TrainingScreen.qml") {
+//               TrainingCtrl.stopTraining()
+//           }
+//           loader.source = page
+//       }
     }
 
     RowLayout {
@@ -41,39 +41,48 @@ ApplicationWindow {
 
                 Button {
                     text: "🏠"
-                    font.pixelSize: 24
+                    width: 64
+                    height: 64
+                    font.pixelSize: 36
                     background: Rectangle { color: parent.hovered ? theme.blurple : "transparent"; radius: 15 }
-                    onClicked: App.navRequested("TrainingScreen.qml")
+//                  onClicked: App.navRequested("TrainingScreen.qml")
+                    onClicked: console.log("Kliknięto menu główne (Puste)")
                 }
 
                 Button {
                     text: "🏆"
-                    font.pixelSize: 24
+                    width: 64
+                    height: 64
+                    font.pixelSize: 36
                     background: Rectangle { color: parent.hovered ? theme.blurple : "transparent"; radius: 15 }
                     onClicked: console.log("Kliknięto rekordy (Puste)")
                 }
                 Button {
                     text: "💬"
-                    font.pixelSize: 24
+                    width: 64
+                    height: 64
+                    font.pixelSize: 36
                     background: Rectangle { color: parent.hovered ? theme.blurple : "transparent"; radius: 15 }
                     onClicked: console.log("Kliknięto chat (Puste)")
                 }
                 Button {
                     text: "⚙️"
-                    font.pixelSize: 24
+                    width: 64
+                    height: 64
+                    font.pixelSize: 36
                     background: Rectangle { color: parent.hovered ? theme.blurple : "transparent"; radius: 15 }
                     onClicked: console.log("Kliknięto ustawienia (Puste)")
                 }
             }
         }
 
-        Loader {
-            id: loader
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.margins: 20
+//        Loader {
+//            id: loader
+//            Layout.fillWidth: true
+//            Layout.fillHeight: true
+//            Layout.margins: 20
 
-            source: "TrainingScreen.qml"
-        }
+//            source: "TrainingScreen.qml"
+//        }
     }
 }
