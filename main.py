@@ -2,6 +2,7 @@ import sys
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQuickControls2 import QQuickStyle
 
 from screen_training import TrainingController, VideoProvider
 
@@ -14,6 +15,9 @@ class AppCore(QObject):
 
 
 if __name__ == "__main__":
+    # Fixes white background when hovering over buttons in Windows 11
+    QQuickStyle.setStyle("Basic")
+
     app = QGuiApplication(sys.argv)
     engine = QQmlApplicationEngine()
 
