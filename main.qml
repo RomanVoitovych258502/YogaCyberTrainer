@@ -27,6 +27,7 @@ ApplicationWindow {
         id: navModel
         ListElement { icon: "🏠"; source: "MainMenu.qml"; name: "Home" }
         ListElement { icon: "🏆"; source: "Statistics.qml"; name: "Records" }
+        ListElement { icon: "💬"; source: "Ai.qml"; name: "AI" }
         ListElement { icon: "⚙️"; source: "Settings.qml"; name: "Settings" }
     }
 
