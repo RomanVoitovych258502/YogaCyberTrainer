@@ -21,7 +21,6 @@ opencv-contrib-python==4.13.0.92
 opt_einsum==3.4.0
 packaging==26.1
 pillow==12.2.0
-playsound==1.2.2
 protobuf==4.25.9
 pycparser==3.0
 pyparsing==3.3.2
