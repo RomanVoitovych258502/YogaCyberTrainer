@@ -23,7 +23,23 @@ Item {
             anchors.fill: parent
             anchors.margins: 10
             fillMode: Image.PreserveAspectFit
-            cache: false
+        }
+        Button {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: 20
+            text: "🔄"
+            onClicked: TrainingCtrl.rotateCamera()
+        }
+
+        Text {
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottomMargin: 20
+            text: TrainingCtrl.currentLetter
+            color: TrainingCtrl.currentLetter === "?" ? "#FF5555" : "#00FFD1"
+            font.pixelSize: 40
+            font.bold: true
         }
     }
 }
