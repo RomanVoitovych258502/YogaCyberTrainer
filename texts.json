@@ -1,0 +1,11 @@
+{
+    "pl": {
+        "hello": "Cześć",
+        "menu": "Menu zostało otwarte"
+    },
+
+    "en": {
+        "hello": "Hello",
+        "menu": "Menu opened"
+    }
+}
