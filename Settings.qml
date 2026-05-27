@@ -26,8 +26,10 @@ ScrollView {
                 spacing: 15
 
                 StyledComboBox {
+                    id: cameraComboBox
                     Layout.fillWidth: true
-                    model: ["Kamerka #1", "Kamerka #2", "Kamerka #3"]
+                    model: TrainingCtrl.cameraNames
+                    onActivated: (index) => TrainingCtrl.setCameraIndex(index)
                 }
 
                 Rectangle {
@@ -39,10 +41,41 @@ ScrollView {
                     border.color: "#35353d"
                     clip: true
 
+                    Image {
+                        id: previewImage
+                        anchors.fill: parent
+                        fillMode: Image.PreserveAspectFit
+                        source: "image://video/preview"
+                        cache: false
+                        visible: TrainingCtrl.isRunning
+                    }
+
                     Text {
                         anchors.centerIn: parent
-                        text: "Podgląd kamery..."
+                        text: "Podgląd kamery wyłączony..."
                         color: "#555"
+                        visible: !TrainingCtrl.isRunning
+                    }
+
+                    Connections {
+                        target: TrainingCtrl
+                        function onFrameUpdated() {
+                            if (TrainingCtrl.isRunning) {
+                                previewImage.source = "image://video/preview?" + Date.now()
+                            }
+                        }
+                    }
+                }
+
+                StyledButton {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: TrainingCtrl.isRunning ? "Wyłącz podgląd" : "Włącz podgląd"
+                    onClicked: {
+                        if (TrainingCtrl.isRunning) {
+                            TrainingCtrl.stopTraining();
+                        } else {
+                            TrainingCtrl.startTraining();
+                        }
                     }
                 }
             }
