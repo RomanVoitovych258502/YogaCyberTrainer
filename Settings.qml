@@ -25,6 +25,8 @@ ScrollView {
                 Layout.fillWidth: true
                 spacing: 15
 
+                // --- Kamera 1 ---
+                Label { text: "Kamera główna (kamera 1)"; color: "#ccc"; font.pixelSize: 12 }
                 StyledComboBox {
                     id: cameraComboBox
                     Layout.fillWidth: true
@@ -32,36 +34,168 @@ ScrollView {
                     onActivated: (index) => TrainingCtrl.setCameraIndex(index)
                 }
 
-                Rectangle {
-                    Layout.preferredWidth: parent.width / 2
-                    Layout.alignment: Qt.AlignHCenter
-                    implicitHeight: width * (3/4)
-                    color: "#000"
-                    radius: 8
-                    border.color: "#35353d"
-                    clip: true
+                // --- Kamera 2 ---
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
 
-                    Image {
-                        id: previewImage
-                        anchors.fill: parent
-                        fillMode: Image.PreserveAspectFit
-                        source: "image://video/preview"
-                        cache: false
-                        visible: TrainingCtrl.isRunning
+                    Label {
+                        text: "Druga kamera"
+                        color: "#ccc"
+                        font.pixelSize: 12
+                        Layout.fillWidth: true
                     }
 
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Podgląd kamery wyłączony..."
-                        color: "#555"
-                        visible: !TrainingCtrl.isRunning
+                    // Toggle switch dla drugiej kamery
+                    Rectangle {
+                        id: toggleSwitch
+                        width: 48
+                        height: 26
+                        radius: 13
+                        color: dualSwitch.checked ? theme.blurple : "#35353d"
+                        border.color: dualSwitch.checked ? theme.blurple : "#45454d"
+
+                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                        Rectangle {
+                            id: toggleKnob
+                            width: 20
+                            height: 20
+                            radius: 10
+                            color: "white"
+                            anchors.verticalCenter: parent.verticalCenter
+                            x: dualSwitch.checked ? parent.width - width - 3 : 3
+                            Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                dualSwitch.checked = !dualSwitch.checked
+                                if (dualSwitch.checked) {
+                                    // Wybierz pierwszą inną kamerę jako domyślną kamerę 2
+                                    var idx = (cameraComboBox.currentIndex === 0 && TrainingCtrl.cameraNames.length > 1) ? 1 : 0
+                                    camera2ComboBox.currentIndex = idx
+                                    TrainingCtrl.setCameraIndex2(idx)
+                                } else {
+                                    TrainingCtrl.setCameraIndex2(-1)
+                                }
+                            }
+                        }
+
+                        // Ukryty CheckBox przechowujący stan
+                        CheckBox {
+                            id: dualSwitch
+                            visible: false
+                            checked: TrainingCtrl.dualCameraEnabled
+                        }
+                    }
+                }
+
+                // ComboBox drugiej kamery — widoczny tylko gdy toggle włączony
+                StyledComboBox {
+                    id: camera2ComboBox
+                    Layout.fillWidth: true
+                    model: TrainingCtrl.cameraNames
+                    visible: dualSwitch.checked
+                    enabled: dualSwitch.checked
+                    opacity: dualSwitch.checked ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                    onActivated: (index) => TrainingCtrl.setCameraIndex2(index)
+                }
+
+                // Podgląd — w trybie dual pokazuje oba obrazy obok siebie
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    // Podgląd kamery 1
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: width * (3 / 4)
+                        color: "#000"
+                        radius: 8
+                        border.color: "#35353d"
+                        clip: true
+
+                        Image {
+                            id: previewImage
+                            anchors.fill: parent
+                            fillMode: Image.PreserveAspectFit
+                            source: "image://video/preview"
+                            cache: false
+                            visible: TrainingCtrl.isRunning
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Kamera 1\nPodgląd wyłączony"
+                            horizontalAlignment: Text.AlignHCenter
+                            color: "#555"
+                            visible: !TrainingCtrl.isRunning
+                            font.pixelSize: 11
+                        }
+
+                        Text {
+                            anchors.bottom: parent.bottom
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottomMargin: 4
+                            text: "KAMERA 1"
+                            color: theme.blurple
+                            font.pixelSize: 9
+                            font.bold: true
+                            visible: dualSwitch.checked && TrainingCtrl.isRunning
+                        }
                     }
 
-                    Connections {
-                        target: TrainingCtrl
-                        function onFrameUpdated() {
-                            if (TrainingCtrl.isRunning) {
-                                previewImage.source = "image://video/preview?" + Date.now()
+                    // Podgląd kamery 2 — widoczny tylko gdy dual włączony
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: width * (3 / 4)
+                        color: "#000"
+                        radius: 8
+                        border.color: dualSwitch.checked ? theme.blurple : "#35353d"
+                        clip: true
+                        visible: dualSwitch.checked
+
+                        Image {
+                            id: previewImage2
+                            anchors.fill: parent
+                            fillMode: Image.PreserveAspectFit
+                            source: "image://video2/preview"
+                            cache: false
+                            visible: TrainingCtrl.isRunning && dualSwitch.checked
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Kamera 2\nPodgląd wyłączony"
+                            horizontalAlignment: Text.AlignHCenter
+                            color: "#555"
+                            visible: !TrainingCtrl.isRunning
+                            font.pixelSize: 11
+                        }
+
+                        Text {
+                            anchors.bottom: parent.bottom
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottomMargin: 4
+                            text: "KAMERA 2"
+                            color: theme.blurple
+                            font.pixelSize: 9
+                            font.bold: true
+                            visible: dualSwitch.checked && TrainingCtrl.isRunning
+                        }
+                    }
+                }
+
+                Connections {
+                    target: TrainingCtrl
+                    function onFrameUpdated() {
+                        if (TrainingCtrl.isRunning) {
+                            previewImage.source = "image://video/preview?" + Date.now()
+                            if (dualSwitch.checked) {
+                                previewImage2.source = "image://video2/preview?" + Date.now()
                             }
                         }
                     }
