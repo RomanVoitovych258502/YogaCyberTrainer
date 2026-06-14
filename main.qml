@@ -14,7 +14,8 @@ ApplicationWindow {
     property string pendingPage: ""
 
     function changePage(newPage) {
-        if (activePage === newPage) return;
+        if (activePage === newPage)
+            return;
 
         console.log("Otworzono " + newPage);
 
@@ -42,12 +43,11 @@ ApplicationWindow {
 
     Connections {
         target: App
-//       function onNavRequested(page) {
-//           if(loader.source.toString().indexOf("TrainingScreen") !== -1 && page !== "TrainingScreen.qml") {
-//               TrainingCtrl.stopTraining()
-//           }
-//           loader.source = page
-//       }
+
+        function onPageChangeRequested(page) {
+            console.log("PAGE CHANGE:", page)
+            window.changePage(page)
+        }
     }
 
     RowLayout {
@@ -65,6 +65,7 @@ ApplicationWindow {
 
                 Repeater {
                     model: navModel
+
                     delegate: Button {
                         text: model.icon
                         width: 64
@@ -73,9 +74,11 @@ ApplicationWindow {
 
                         background: Rectangle {
                             color: (activePage === model.source)
-                                ? theme.blurple
-                                : (parent.hovered ? "#35353d" : "transparent")
+                                   ? theme.blurple
+                                   : (parent.hovered ? "#35353d" : "transparent")
+
                             radius: 15
+
                             Behavior on color {
                                 ColorAnimation {
                                     duration: 200
@@ -89,37 +92,55 @@ ApplicationWindow {
             }
         }
 
-        // Main Content
-        Loader {
-            id: loader
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.margins: 20
-            source: "MainMenu.qml" // Initial screen
-            opacity: 1
+        // ... wewnątrz ApplicationWindow ...
 
-            // Smooth transition effect
-            onLoaded: fadeIn.restart()
+    function changePage(newPage) {
+        if (loader.source.toString().endsWith(newPage)) return;
 
-            NumberAnimation {
-                id: fadeIn
-                target: loader
-                property: "opacity"
-                from: 0
-                to: 1
-                duration: 250
-                easing.type: Easing.OutCubic
+        console.log("Przełączam na: " + newPage);
+        pendingPage = newPage; // Zapisz stronę do wczytania
+        fadeOut.restart();     // Zacznij znikanie obecnej strony
+    }
+
+    Loader {
+        id: loader
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        Layout.margins: 20
+        source: "MainMenu.qml"
+        opacity: 1
+
+        // 1. Reakcja na załadowanie nowej strony
+        onLoaded: {
+            fadeIn.restart();
+
+            // 2. Automatyczne uruchomienie treningu, gdy TrainingScreen się pojawi
+            if (loader.source.toString().endsWith("TrainingScreen.qml")) {
+                console.log("TrainingScreen załadowany - START");
+                TrainingCtrl.startTraining();
             }
+        }
 
-            NumberAnimation {
-                id: fadeOut
-                target: loader
-                property: "opacity"
-                to: 0
-                duration: 200
-                easing.type: Easing.InCubic
+        NumberAnimation {
+            id: fadeIn
+            target: loader
+            property: "opacity"
+            from: 0
+            to: 1
+            duration: 250
+        }
 
-                onFinished: loader.source = pendingPage
+        NumberAnimation {
+            id: fadeOut
+            target: loader
+            property: "opacity"
+            to: 0
+            duration: 200
+
+            // 3. Po zniknięciu starej strony, podmień źródło
+            onFinished: {
+                loader.source = pendingPage
+            }
             }
         }
     }

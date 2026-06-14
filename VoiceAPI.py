@@ -86,7 +86,7 @@ class VoiceAssistant:
         os.close(fd)
 
         try:
-            communicate = edge_tts.Communicate(text=text, voice=voice)
+            communicate = edge_tts.Communicate(text=text, voice=voice, rate="+20%")
             await communicate.save(mp3_path)
 
             pygame.mixer.music.load(mp3_path)
