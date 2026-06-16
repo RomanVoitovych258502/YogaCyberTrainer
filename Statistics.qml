@@ -17,25 +17,24 @@ Item {
             font.pixelSize: 32
         }
 
-        // Górna karta podsumowania
         Rectangle {
             Layout.fillWidth: true
             height: 100
             color: theme.darkBtn
             radius: 15
-            
+
             RowLayout {
                 anchors.centerIn: parent
                 spacing: 50
-                
+
                 Column {
                     Text { text: "OSTATNIA SESJA"; color: "#888fb1"; font.pixelSize: 11; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: "88%"; color: theme.blurple; font.pixelSize: 32; font.bold: true; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: sessionManager.lastScore; color: theme.blurple; font.pixelSize: 32; font.bold: true; anchors.horizontalCenter: parent.horizontalCenter }
                 }
                 Rectangle { width: 1; height: 40; color: "#35353d" }
                 Column {
                     Text { text: "CZAS"; color: "#888fb1"; font.pixelSize: 11; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { text: "15:20"; color: "white"; font.pixelSize: 32; font.bold: true; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { text: sessionManager.lastTime; color: "white"; font.pixelSize: 32; font.bold: true; anchors.horizontalCenter: parent.horizontalCenter }
                 }
             }
         }
@@ -52,30 +51,13 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            spacing: 12 // Odstęp między kafelkami
-            
-            model: ListModel {
-                ListElement { 
-                    date: "12.05.2024"
-                    avgScore: "92%"
-                    poses: "Wojownik I (95%), Drzewo (88%), Kobra (93%)"
-                }
-                ListElement { 
-                    date: "10.05.2024"
-                    avgScore: "78%"
-                    poses: "Pies z głową w dół (70%), Deska (86%)"
-                }
-                ListElement { 
-                    date: "08.05.2024"
-                    avgScore: "85%"
-                    poses: "Wojownik II (80%), Drzewo (90%)"
-                }
-            }
-            
+            spacing: 12
+
+            model: sessionManager.historyModel
+
             delegate: Rectangle {
                 width: sessionList.width
-                // Używamy implicitHeight z ColumnLayout, aby prostokąt urósł razem z tekstem
-                height: mainColumn.implicitHeight + 30 
+                height: mainColumn.implicitHeight + 30
                 color: "#1c1c21"
                 border.color: "#35353d"
                 radius: 12
