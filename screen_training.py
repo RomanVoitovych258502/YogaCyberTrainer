@@ -13,7 +13,6 @@ from PySide6.QtMultimedia import QMediaDevices
 HOLD_REQUIRED = 3.0
 HOLD_TOLERANCE = 0.5
 
-# Zmieniono na format nazw plików dla poprawnego wczytywania
 AVAILABLE_POSES = [
     "pies_z_glowa_w_dol",
     "pozycja_dziecka",
@@ -68,16 +67,9 @@ class TrainingController(QObject):
         self._hold_start = None
         self._lost_start = None
         self._hold_progress = 0.0
+        self._current_hints = []
 
-        # Wczytanie obrazków pomocniczych
-        self._pose_images = {}
-        for p in AVAILABLE_POSES:
-            if os.path.exists(f"{p}.jpg"):
-                self._pose_images[p] = cv2.imread(f"{p}.jpg")
-            elif os.path.exists(f"{p}.png"):
-                self._pose_images[p] = cv2.imread(f"{p}.png")
-            else:
-                self._pose_images[p] = None
+    # --- WŁAŚCIWOŚCI DLA QML ---
 
     @Property(str, notify=frameUpdated)
     def currentLetter(self):
@@ -94,6 +86,20 @@ class TrainingController(QObject):
     def isRunning(self):
         return self.is_running
 
+    @Property(list, notify=frameUpdated)
+    def poseHints(self):
+        return self._current_hints
+
+    @Property(float, notify=frameUpdated)
+    def holdProgress(self):
+        return self._hold_progress
+
+    @Property(bool, notify=frameUpdated)
+    def isSuper(self):
+        return time.time() < self._super_end_time
+
+    # --- SLOTY I LOGIKA ---
+
     @Slot(int)
     def setCameraIndex(self, index):
         if self._camera_index != index:
@@ -105,6 +111,20 @@ class TrainingController(QObject):
     @Slot()
     def rotateCamera(self):
         self._rotation_state = (self._rotation_state + 1) % 4
+
+    @Slot()
+    def nextPose(self):
+        """Ręczna zmiana pozycji na inną losową (wywoływana z QML po kliknięciu)"""
+        options = [p for p in AVAILABLE_POSES if p != self._target_pose]
+        if options:
+            self._target_pose = random.choice(options)
+
+        # Resetowanie liczników trzymania pozycji
+        self._hold_start = None
+        self._lost_start = None
+        self._hold_progress = 0.0
+        self._current_hints = []
+        self.frameUpdated.emit()
 
     def calculate_angle(self, a, b, c):
         ang = math.degrees(math.atan2(c.y - b.y, c.x - b.x) - math.atan2(a.y - b.y, a.x - b.x))
@@ -130,7 +150,6 @@ class TrainingController(QObject):
         nose_y = lm[self.NOSE].y
         nose_x = lm[self.NOSE].x
 
-        # 1. PIES Z GŁOWĄ W DÓŁ
         hints_downdog = []
         if not (l_hip_ang < 120 and r_hip_ang < 120): hints_downdog.append("Ugnij mocniej biodra")
         if not (l_knee_ang > 140 and r_knee_ang > 140): hints_downdog.append("Wyprostuj kolana")
@@ -138,7 +157,6 @@ class TrainingController(QObject):
         if not (mean_hip_y < mean_sh_y): hints_downdog.append("Uniesc biodra wyzej")
         if not (mean_wrist_y > mean_sh_y): hints_downdog.append("Oprzyj dlonie")
 
-        # 2. POZYCJA DZIECKA
         hints_childs = []
         if not (l_knee_ang < 80 and r_knee_ang < 80): hints_childs.append("Ugnij kolana bardziej")
         if not (abs(mean_hip_y - mean_ank_y) < 0.10): hints_childs.append("Oprzyj biodra na pietach")
@@ -146,7 +164,6 @@ class TrainingController(QObject):
             "Wyciagnij rece do przodu")
         if not (mean_sh_y > mean_hip_y - 0.05): hints_childs.append("Opusc tors nizej")
 
-        # 3. POZYCJA DRZEWA
         hints_tree = []
         tree_l = (l_knee_ang < 110 and r_knee_ang > 150) and (lm[self.L_ANKLE].y < lm[self.R_KNEE].y + 0.05)
         tree_r = (r_knee_ang < 110 and l_knee_ang > 150) and (lm[self.R_ANKLE].y < lm[self.L_KNEE].y + 0.05)
@@ -157,7 +174,6 @@ class TrainingController(QObject):
         if not (abs(lm[self.L_ELBOW].x - lm[self.R_ELBOW].x) > abs(
             lm[self.L_SHOULDER].x - lm[self.R_SHOULDER].x)): hints_tree.append("Rozstaw lokcie szerzej")
 
-        # 4. POZYCJA GÓRY
         hints_mountain = []
         if not ((l_knee_ang > 145 and r_knee_ang > 145) and (
                 l_hip_ang > 140 and r_hip_ang > 140)): hints_mountain.append("Wyprostuj nogi i biodra")
@@ -203,67 +219,13 @@ class TrainingController(QObject):
             self._super_end_time = now + 2.0
 
             options = [p for p in AVAILABLE_POSES if p != self._target_pose]
-            self._target_pose = random.choice(options)
+            if options:
+                self._target_pose = random.choice(options)
 
             self._hold_start = None
             self._hold_progress = 0.0
 
         return self._hold_progress
-
-    def _draw_overlay(self, rgb, hints: list, progress: float, now: float):
-        h, w = rgb.shape[:2]
-
-        # 1. RYSOWANIE OBRAZKA CELU (System graficzny)
-        img_size = 120
-        margin = 15
-
-        target_img = self._pose_images.get(self._target_pose)
-        if target_img is not None:
-            resized_img = cv2.resize(target_img, (img_size, img_size))
-            resized_rgb = cv2.cvtColor(resized_img, cv2.COLOR_BGR2RGB)
-            rgb[margin:margin + img_size, margin:margin + img_size] = resized_rgb
-            # Ramka wokół zdjęcia
-            cv2.rectangle(rgb, (margin, margin), (margin + img_size, margin + img_size), (0, 255, 0), 2)
-        else:
-            # Placeholder, gdy nie ma zdjęcia
-            cv2.rectangle(rgb, (margin, margin), (margin + img_size, margin + img_size), (30, 30, 30), -1)
-            cv2.rectangle(rgb, (margin, margin), (margin + img_size, margin + img_size), (255, 255, 255), 1)
-            cv2.putText(rgb, "BRAK ZDJ", (margin + 15, margin + 65), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
-
-        # 2. RYSOWANIE PODPOWIEDZI
-        hints_start_y = margin + img_size + 30
-        for i, hint in enumerate(hints):
-            y = hints_start_y + i * 35
-            cv2.putText(rgb, f"! {hint}", (margin + 2, y + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 3, cv2.LINE_AA)
-            cv2.putText(rgb, f"! {hint}", (margin, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
-
-        # 3. PASEK POSTĘPU
-        bar_h = 18
-        bar_margin = 20
-        bar_y = h - bar_margin - bar_h
-        bar_w = w - 2 * bar_margin
-
-        cv2.rectangle(rgb, (bar_margin, bar_y), (bar_margin + bar_w, bar_y + bar_h), (50, 50, 50), -1)
-        if progress > 0:
-            fill_color = (80, 200, 80) if progress < 1.0 else (50, 220, 50)
-            cv2.rectangle(rgb, (bar_margin, bar_y), (bar_margin + int(bar_w * progress), bar_y + bar_h), fill_color, -1)
-        cv2.rectangle(rgb, (bar_margin, bar_y), (bar_margin + bar_w, bar_y + bar_h), (180, 180, 180), 1)
-
-        label = f"Trzymaj: {min(int(progress * HOLD_REQUIRED) + 1, int(HOLD_REQUIRED))}/{int(HOLD_REQUIRED)}s"
-        cv2.putText(rgb, label, (bar_margin + 6, bar_y + bar_h - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1,
-                    cv2.LINE_AA)
-
-        # 4. WIELKIE "SUPER!"
-        if now < self._super_end_time:
-            text = "SUPER!"
-            font = cv2.FONT_HERSHEY_DUPLEX
-            font_scale = 3.0
-            thickness = 6
-            text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
-            text_x = (w - text_size[0]) // 2
-            text_y = (h + text_size[1]) // 2
-            cv2.putText(rgb, text, (text_x + 5, text_y + 5), font, font_scale, (0, 0, 0), thickness + 3, cv2.LINE_AA)
-            cv2.putText(rgb, text, (text_x, text_y), font, font_scale, (50, 255, 50), thickness, cv2.LINE_AA)
 
     @Slot()
     def startTraining(self):
@@ -317,12 +279,13 @@ class TrainingController(QObject):
         self.last_letters_queue.append(detected)
         if len(self.last_letters_queue) > self.buffer_size:
             self.last_letters_queue.pop(0)
+
         smoothed = max(set(self.last_letters_queue), key=self.last_letters_queue.count)
         self._current_letter = smoothed
 
         now = time.time()
-        progress = self._update_hold_timer(smoothed, now)
-        self._draw_overlay(rgb, hints, progress, now)
+        self._current_hints = hints
+        self._update_hold_timer(smoothed, now)
 
         h, w, ch = rgb.shape
         self.video_provider.image = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888).copy()
