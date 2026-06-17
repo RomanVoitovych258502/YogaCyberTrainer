@@ -2,6 +2,7 @@ import cv2
 import time
 import os
 import random
+import math
 import mediapipe as mp
 from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer
 from PySide6.QtGui import QImage
@@ -70,18 +71,12 @@ class TrainingController(QObject):
         self._hold_start = None
         self._lost_start = None
         self._hold_progress = 0.0
+        
+        # --- Zmienne na potrzeby nowego GUI ---
+        self._current_hints = []
 
         # --- MECHANIZM DELAYU ---
         self._hint_timer_start = None
-
-        self._pose_images = {}
-        for p in AVAILABLE_POSES:
-            if os.path.exists(f"{p}.jpg"):
-                self._pose_images[p] = cv2.imread(f"{p}.jpg")
-            elif os.path.exists(f"{p}.png"):
-                self._pose_images[p] = cv2.imread(f"{p}.png")
-            else:
-                self._pose_images[p] = None
 
     @Property(str, notify=frameUpdated)
     def currentLetter(self):
@@ -104,6 +99,18 @@ class TrainingController(QObject):
     @Property(int, notify=frameUpdated)
     def cameraIndex2(self):
         return self._camera_index_2
+
+    @Property(list, notify=frameUpdated)
+    def poseHints(self):
+        return self._current_hints
+
+    @Property(float, notify=frameUpdated)
+    def holdProgress(self):
+        return self._hold_progress
+
+    @Property(bool, notify=frameUpdated)
+    def isSuper(self):
+        return time.time() < self._super_end_time
 
     @Slot(int)
     def setCameraIndex(self, index):
@@ -152,23 +159,29 @@ class TrainingController(QObject):
         elif cam_id == 2:
             self._rotation_state_2 = (self._rotation_state_2 + 1) % 4
 
+    @Slot()
+    def nextPose(self):
+        """Przeskakuje do kolejnej pozycji na żądanie użytkownika (z GUI)"""
+        options = [p for p in AVAILABLE_POSES if p != self._target_pose]
+        if options:
+            self._target_pose = random.choice(options)
+
+        self._hold_start = None
+        self._lost_start = None
+        self._hold_progress = 0.0
+        self._current_hints = []
+        self.frameUpdated.emit()
+
     def is_whole_body_visible(self, lm, target_pose):
-        """
-        Sprawdza widoczność sylwetki uwzględniając, czy pozycja jest wykonywana
-        przodem (wymaga obu stron ciała) czy bokiem (wymaga tylko jednego profilu).
-        """
         if target_pose == "pozycja_drzewa":
-            # PRZODEM: Wymagamy widoczności lewej i prawej strony ciała
             critical_landmarks = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]
             for idx in critical_landmarks:
                 if lm[idx].visibility < 0.5:
                     return False
             return True
         else:
-            # BOKIEM (Góra, Pies, Dziecko): Jedna strona zasłania drugą.
-            # Wystarczy, że widzimy wyraźnie przynajmniej jeden cały profil (lewy ALBO prawy).
-            left_profile = [11, 13, 15, 23, 25, 27]  # Bark, łokieć, nadgarstek, biodro, kolano, kostka lewa
-            right_profile = [12, 14, 16, 24, 26, 28]  # Bark, łokieć, nadgarstek, biodro, kolano, kostka prawa
+            left_profile = [11, 13, 15, 23, 25, 27]
+            right_profile = [12, 14, 16, 24, 26, 28]
 
             left_ok = all(lm[idx].visibility > 0.4 for idx in left_profile)
             right_ok = all(lm[idx].visibility > 0.4 for idx in right_profile)
@@ -204,54 +217,7 @@ class TrainingController(QObject):
 
         return self._hold_progress
 
-    def _draw_overlay(self, rgb, hints: list, progress: float, now: float):
-        h, w = rgb.shape[:2]
-        img_size = 120
-        margin = 15
-
-        target_img = self._pose_images.get(self._target_pose)
-        if target_img is not None:
-            resized_img = cv2.resize(target_img, (img_size, img_size))
-            resized_rgb = cv2.cvtColor(resized_img, cv2.COLOR_BGR2RGB)
-            rgb[margin:margin + img_size, margin:margin + img_size] = resized_rgb
-            cv2.rectangle(rgb, (margin, margin), (margin + img_size, margin + img_size), (0, 255, 0), 2)
-        else:
-            cv2.rectangle(rgb, (margin, margin), (margin + img_size, margin + img_size), (30, 30, 30), -1)
-            cv2.rectangle(rgb, (margin, margin), (margin + img_size, margin + img_size), (255, 255, 255), 1)
-
-        hints_start_y = margin + img_size + 30
-        for i, hint in enumerate(hints):
-            y = hints_start_y + i * 35
-            text_color = (255, 50, 50) if "Pokaz cale cialo" in hint else (0, 255, 0)
-            cv2.putText(rgb, f"! {hint}", (margin + 2, y + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 3, cv2.LINE_AA)
-            cv2.putText(rgb, f"! {hint}", (margin, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2, cv2.LINE_AA)
-
-        bar_h = 18
-        bar_margin = 20
-        bar_y = h - bar_margin - bar_h
-        bar_w = w - 2 * bar_margin
-
-        cv2.rectangle(rgb, (bar_margin, bar_y), (bar_margin + bar_w, bar_y + bar_h), (50, 50, 50), -1)
-        if progress > 0:
-            fill_color = (80, 200, 80) if progress < 1.0 else (50, 220, 50)
-            cv2.rectangle(rgb, (bar_margin, bar_y), (bar_margin + int(bar_w * progress), bar_y + bar_h), fill_color, -1)
-        cv2.rectangle(rgb, (bar_margin, bar_y), (bar_margin + bar_w, bar_y + bar_h), (180, 180, 180), 1)
-
-        label = f"Trzymaj: {min(int(progress * HOLD_REQUIRED) + 1, int(HOLD_REQUIRED))}/{int(HOLD_REQUIRED)}s"
-        cv2.putText(rgb, label, (bar_margin + 6, bar_y + bar_h - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1,
-                    cv2.LINE_AA)
-
-        if now < self._super_end_time:
-            text = "SUPER!"
-            font = cv2.FONT_HERSHEY_DUPLEX
-            text_size = cv2.getTextSize(text, font, 3.0, 6)[0]
-            cv2.putText(rgb, text, ((w - text_size[0]) // 2 + 5, (h + text_size[1]) // 2 + 5), font, 3.0, (0, 0, 0), 9,
-                        cv2.LINE_AA)
-            cv2.putText(rgb, text, ((w - text_size[0]) // 2, (h + text_size[1]) // 2), font, 3.0, (50, 255, 50), 6,
-                        cv2.LINE_AA)
-
     def _detect_cam2(self, lm, target_pose):
-        """Wrapper na potrzeby overlay'u kamery 2."""
         plain_hints = check_cam2_rules(target_pose, lm)
         color_map = {
             "Zlacz stopy": (255, 80, 80),
@@ -290,6 +256,7 @@ class TrainingController(QObject):
             self._lost_start = None
             self._hold_progress = 0.0
             self._hint_timer_start = None
+            self._current_hints = []
             self.timer.start(15)
 
     @Slot()
@@ -357,10 +324,8 @@ class TrainingController(QObject):
         if lm1:
             self.mp_drawing.draw_landmarks(rgb, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS)
 
-            # SPRAWDZENIE CZY CIAŁO JEST W KADRZE (Z UWZGLĘDNIENIEM POZYCJI)
+            # SPRAWDZENIE CZY CIAŁO JEST W KADRZE
             if self.is_whole_body_visible(lm1, self._target_pose):
-
-                # Przekazujemy do pose_rules
                 actual_detected, actual_hints = check_pose_rules(
                     self._target_pose,
                     lm1,
@@ -382,7 +347,6 @@ class TrainingController(QObject):
                     else:
                         hints = []
             else:
-                # CIAŁO NIE W KADRZE - NATYCHMIASTOWY KOMUNIKAT
                 detected = "?"
                 hints = ["Pokaz cale cialo w kadrze"]
                 self._hint_timer_start = None
@@ -394,8 +358,8 @@ class TrainingController(QObject):
         smoothed = max(set(self.last_letters_queue), key=self.last_letters_queue.count)
         self._current_letter = smoothed
 
-        progress = self._update_hold_timer(smoothed, now)
-        self._draw_overlay(rgb, hints, progress, now)
+        self._current_hints = hints
+        self._update_hold_timer(smoothed, now)
 
         h, w, ch = rgb.shape
         self.video_provider.image = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888).copy()
