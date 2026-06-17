@@ -1,20 +1,28 @@
-import sys, os, json, asyncio, threading, random
+import os
+import sys
+import json
+import asyncio
+import threading
 import numpy as np
 import sounddevice as sd
-from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer, QUrl
+from PySide6.QtCore import QObject, Signal, Property, Slot, QUrl, QTimer
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 
-from screen_training import TrainingController
-from video_providers import VideoProvider, VideoProvider2
+from screen_training import TrainingController, VideoProvider, VideoProvider2
 from VoiceAPI import VoiceAssistant
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class AppCore(QObject):
     navRequested = Signal(str)
     videoSourceChanged = Signal()
+    pageChangeRequested = Signal(str)
+    startTrainingRequested = Signal()
+    stopTrainingRequested = Signal()
     i18nChanged = Signal()
     audioOutputsChanged = Signal()
     audioInputsChanged = Signal()
@@ -26,17 +34,13 @@ class AppCore(QObject):
         self._video_source = "0"
         self._i18n_dict = {}
 
-        # Audio & TTS setup
+        # Audio & TTS Setup
         self.tts_player = QMediaPlayer()
         self.tts_audio_output = QAudioOutput()
         self.tts_player.setAudioOutput(self.tts_audio_output)
         self.playTtsRequested.connect(self._do_play_tts)
 
         self.setup_audio_devices()
-
-        # Initialize voice API
-        self.voice_api = VoiceAssistant(commands={}, language="pl", play_callback=self.play_tts_file)
-        self.voice_api.input_device = self._current_input_idx
 
         # Audio level monitoring
         self._audio_level = 0.0
@@ -47,12 +51,12 @@ class AppCore(QObject):
         self.stream = None
         self.start_input_stream()
 
-        # Load initial language
+        # Load default interface language
         self.load_language("pl")
 
     # --- Language / i18n ---
     def load_language(self, lang_code):
-        path = os.path.join("lang", f"{lang_code}.json")
+        path = os.path.join(SCRIPT_DIR, "lang", f"{lang_code}.json")
         try:
             with open(path, "r", encoding="utf-8") as f:
                 self._i18n_dict = json.load(f)
@@ -68,10 +72,10 @@ class AppCore(QObject):
     @Slot(str)
     def setLanguage(self, lang_code):
         self.load_language(lang_code)
-        self.voice_api.language = lang_code
-        self.voice_api.voice = "pl-PL-MarekNeural" if lang_code == "pl" else "en-US-GuyNeural"
+        if hasattr(self, 'voice_assistant'):
+            self.voice_assistant.preferred_language = lang_code
 
-    # --- Audio Logic ---
+    # --- Audio Device Logic & Levels ---
     def setup_audio_devices(self):
         self._audio_outputs = QMediaDevices.audioOutputs()
         self._output_names = [dev.description() for dev in self._audio_outputs]
@@ -104,13 +108,17 @@ class AppCore(QObject):
     def setInputDevice(self, index):
         if 0 <= index < len(self._input_devices):
             self._current_input_idx = self._input_devices[index]['index']
-            self.voice_api.input_device = self._current_input_idx
+            if hasattr(self, 'voice_assistant'):
+                self.voice_assistant.input_device = self._current_input_idx
             self.start_input_stream()
 
     def start_input_stream(self):
         if self.stream:
-            self.stream.stop()
-            self.stream.close()
+            try:
+                self.stream.stop()
+                self.stream.close()
+            except Exception:
+                pass
         if self._current_input_idx is not None:
             try:
                 self.stream = sd.InputStream(device=self._current_input_idx, channels=1, callback=self.audio_callback)
@@ -138,9 +146,9 @@ class AppCore(QObject):
     @Slot()
     def testAudio(self):
         def worker():
-            text = self.voice_api.get_text("test_audio")
-            asyncio.run(self.voice_api.speak_async(text))
-
+            if hasattr(self, 'voice_assistant'):
+                text = self.voice_assistant.get_text("test_audio")
+                self.voice_assistant.speak(text, self.voice_assistant.preferred_language)
         threading.Thread(target=worker, daemon=True).start()
 
     # --- Video Config ---
@@ -175,12 +183,87 @@ if __name__ == "__main__":
 
     training_ctrl = TrainingController(app_core, video_provider, video_provider2)
 
+    app_core.startTrainingRequested.connect(training_ctrl.startTraining)
+    app_core.stopTrainingRequested.connect(training_ctrl.stopTraining)
+
+    def _start_training():
+        print("[Voice] START")
+        app_core.startTrainingRequested.emit()
+        app_core.pageChangeRequested.emit("TrainingScreen.qml")
+
+    def _stop_training():
+        print("[Voice] STOP")
+        app_core.stopTrainingRequested.emit()
+        app_core.pageChangeRequested.emit("MainMenu.qml")
+
+    def _next_pose():
+        print("[Voice] NEXT POSE")
+        if training_ctrl.isRunning:
+            training_ctrl.nextPose()
+
+    def _swap_cameras():
+        print("[Voice] SWAP CAMERAS")
+        cam1 = training_ctrl._camera_index
+        cam2 = training_ctrl._camera_index_2
+        if cam2 >= 0:
+            training_ctrl.setCameraIndex(cam2)
+            training_ctrl.setCameraIndex2(cam1)
+
+    voice_commands = {
+        "zacznij trening": _start_training,
+        "rozpocznij trening": _start_training,
+        "start": _start_training,
+        "trenuj": _start_training,
+        "zatrzymaj trening": _stop_training,
+        "stop": _stop_training,
+        "koniec": _stop_training,
+        "zakoncz trening": _stop_training,
+        "zakończ trening": _stop_training,
+        "wróc": _stop_training,
+        "wroc": _stop_training,
+        "wróć": _stop_training,
+        "następna pozycja": _next_pose,
+        "nastepna pozycja": _next_pose,
+        "zmień pozycję": _next_pose,
+        "zmien pozycje": _next_pose,
+        "kolejna pozycja": _next_pose,
+        "dalej": _next_pose,
+        "zamień kamery": _swap_cameras,
+        "zamien kamery": _swap_cameras,
+        "zamień kamerki": _swap_cameras,
+        "zamien kamerki": _swap_cameras,
+        "zmień kamery": _swap_cameras,
+        "zmien kamery": _swap_cameras,
+    }
+
+    voice_assistant = VoiceAssistant(
+        commands=voice_commands,
+        model_pl_path=os.path.join(SCRIPT_DIR, "models", "pl"),
+        model_en_path=os.path.join(SCRIPT_DIR, "models", "en"),
+        preferred_language="pl",
+        play_callback=app_core.play_tts_file
+    )
+
+    # Połącz wybrane urządzenie wejściowe z asystentem głosowym
+    voice_assistant.input_device = app_core._current_input_idx
+    app_core.voice_assistant = voice_assistant
+
+    training_ctrl.setVoiceAssistant(voice_assistant)
+    voice_assistant.start()
+
     ctx = engine.rootContext()
     ctx.setContextProperty("App", app_core)
     ctx.setContextProperty("TrainingCtrl", training_ctrl)
 
-    engine.load("main.qml")
+    engine.addImportPath(SCRIPT_DIR)
+
+    qml_file = os.path.join(SCRIPT_DIR, "main.qml")
+    engine.load(QUrl.fromLocalFile(qml_file))
 
     if not engine.rootObjects():
+        print(f"[ERROR] QML engine failed to load: {qml_file}", file=sys.stderr)
         sys.exit(-1)
-    sys.exit(app.exec())
+
+    exit_code = app.exec()
+    voice_assistant.stop()
+    sys.exit(exit_code)
