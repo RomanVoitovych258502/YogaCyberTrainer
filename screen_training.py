@@ -61,15 +61,12 @@ class TrainingController(QObject):
         self.buffer_size = 15
         self.last_letters_queue = []
 
-        # Logika grywalizacji i celów
         self._target_pose = random.choice(AVAILABLE_POSES)
         self._super_end_time = 0.0
         self._hold_start = None
         self._lost_start = None
         self._hold_progress = 0.0
         self._current_hints = []
-
-    # --- WŁAŚCIWOŚCI DLA QML ---
 
     @Property(str, notify=frameUpdated)
     def currentLetter(self):
@@ -98,8 +95,6 @@ class TrainingController(QObject):
     def isSuper(self):
         return time.time() < self._super_end_time
 
-    # --- SLOTY I LOGIKA ---
-
     @Slot(int)
     def setCameraIndex(self, index):
         if self._camera_index != index:
@@ -114,12 +109,10 @@ class TrainingController(QObject):
 
     @Slot()
     def nextPose(self):
-        """Ręczna zmiana pozycji na inną losową (wywoływana z QML po kliknięciu)"""
         options = [p for p in AVAILABLE_POSES if p != self._target_pose]
         if options:
             self._target_pose = random.choice(options)
 
-        # Resetowanie liczników trzymania pozycji
         self._hold_start = None
         self._lost_start = None
         self._hold_progress = 0.0
