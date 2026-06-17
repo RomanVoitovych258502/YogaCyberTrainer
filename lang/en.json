@@ -10,6 +10,8 @@
   "train.check.back": "CHECKS: BACK",
   "train.cam1": "CAMERA 1",
   "train.cam2": "CAMERA 2",
+  "train.click_to_change": "CLICK TO CHANGE",
+  "train.hold_pose": "Hold the pose!",
   "settings.title": "Settings",
   "settings.cam.title": "CAMERA",
   "settings.cam.main": "Main Camera (Camera 1)",

@@ -10,6 +10,8 @@
   "train.check.back": "SPRAWDZA: PLECY",
   "train.cam1": "KAMERA 1",
   "train.cam2": "KAMERA 2",
+  "train.click_to_change": "KLIKNIJ, ABY ZMIENIĆ",
+  "train.hold_pose": "Trzymaj pozycję!",
   "settings.title": "Ustawienia",
   "settings.cam.title": "KAMERKA",
   "settings.cam.main": "Kamera główna (kamera 1)",
