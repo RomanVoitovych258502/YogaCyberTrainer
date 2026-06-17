@@ -15,7 +15,6 @@ ApplicationWindow {
 
     function changePage(newPage) {
         if (activePage === newPage) return;
-
         console.log("Otworzono " + newPage);
 
         activePage = newPage;
@@ -39,12 +38,10 @@ ApplicationWindow {
         property string fontMain: "Segoe UI"
         property string fontTitle: "Segoe UI Black"
     }
-    SessionManager {
-        id: sessionManager
-    }
+
     Connections {
         target: App
-//       function onNavRequested(page) {
+//        function onNavRequested(page) {
 //           if(loader.source.toString().indexOf("TrainingScreen") !== -1 && page !== "TrainingScreen.qml") {
 //               TrainingCtrl.stopTraining()
 //           }

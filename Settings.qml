@@ -13,20 +13,20 @@ ScrollView {
         spacing: 25
 
         Text {
-            text: "Ustawienia"
+            text: App.i18n["settings.title"] || "Ustawienia"
             color: "white"
             font.pixelSize: 32
             font.family: theme.fontTitle
         }
 
         SettingsGroup {
-            title: "KAMERKA"
+            title: App.i18n["settings.cam.title"] || "KAMERKA"
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 15
 
                 // --- Kamera 1 ---
-                Label { text: "Kamera główna (kamera 1)"; color: "#ccc"; font.pixelSize: 12 }
+                Label { text: App.i18n["settings.cam.main"] || "Kamera główna (kamera 1)"; color: "#ccc"; font.pixelSize: 12 }
                 StyledComboBox {
                     id: cameraComboBox
                     Layout.fillWidth: true
@@ -40,13 +40,12 @@ ScrollView {
                     spacing: 10
 
                     Label {
-                        text: "Druga kamera"
+                        text: App.i18n["settings.cam.second"] || "Druga kamera"
                         color: "#ccc"
                         font.pixelSize: 12
                         Layout.fillWidth: true
                     }
 
-                    // Toggle switch dla drugiej kamery
                     Rectangle {
                         id: toggleSwitch
                         width: 48
@@ -73,7 +72,6 @@ ScrollView {
                             onClicked: {
                                 dualSwitch.checked = !dualSwitch.checked
                                 if (dualSwitch.checked) {
-                                    // Wybierz pierwszą inną kamerę jako domyślną kamerę 2
                                     var idx = (cameraComboBox.currentIndex === 0 && TrainingCtrl.cameraNames.length > 1) ? 1 : 0
                                     camera2ComboBox.currentIndex = idx
                                     TrainingCtrl.setCameraIndex2(idx)
@@ -83,7 +81,6 @@ ScrollView {
                             }
                         }
 
-                        // Ukryty CheckBox przechowujący stan
                         CheckBox {
                             id: dualSwitch
                             visible: false
@@ -92,7 +89,6 @@ ScrollView {
                     }
                 }
 
-                // ComboBox drugiej kamery — widoczny tylko gdy toggle włączony
                 StyledComboBox {
                     id: camera2ComboBox
                     Layout.fillWidth: true
@@ -104,12 +100,10 @@ ScrollView {
                     onActivated: (index) => TrainingCtrl.setCameraIndex2(index)
                 }
 
-                // Podgląd — w trybie dual pokazuje oba obrazy obok siebie
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
 
-                    // Podgląd kamery 1
                     Rectangle {
                         Layout.fillWidth: true
                         implicitHeight: width * (3 / 4)
@@ -129,7 +123,7 @@ ScrollView {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "Kamera 1\nPodgląd wyłączony"
+                            text: App.i18n["settings.cam.cam1_off"] || "Kamera 1\nPodgląd wyłączony"
                             horizontalAlignment: Text.AlignHCenter
                             color: "#555"
                             visible: !TrainingCtrl.isRunning
@@ -140,7 +134,7 @@ ScrollView {
                             anchors.bottom: parent.bottom
                             anchors.horizontalCenter: parent.horizontalCenter
                             anchors.bottomMargin: 4
-                            text: "KAMERA 1"
+                            text: App.i18n["train.cam1"] || "KAMERA 1"
                             color: theme.blurple
                             font.pixelSize: 9
                             font.bold: true
@@ -148,7 +142,6 @@ ScrollView {
                         }
                     }
 
-                    // Podgląd kamery 2 — widoczny tylko gdy dual włączony
                     Rectangle {
                         Layout.fillWidth: true
                         implicitHeight: width * (3 / 4)
@@ -169,7 +162,7 @@ ScrollView {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "Kamera 2\nPodgląd wyłączony"
+                            text: App.i18n["settings.cam.cam2_off"] || "Kamera 2\nPodgląd wyłączony"
                             horizontalAlignment: Text.AlignHCenter
                             color: "#555"
                             visible: !TrainingCtrl.isRunning
@@ -180,7 +173,7 @@ ScrollView {
                             anchors.bottom: parent.bottom
                             anchors.horizontalCenter: parent.horizontalCenter
                             anchors.bottomMargin: 4
-                            text: "KAMERA 2"
+                            text: App.i18n["train.cam2"] || "KAMERA 2"
                             color: theme.blurple
                             font.pixelSize: 9
                             font.bold: true
@@ -203,7 +196,7 @@ ScrollView {
 
                 StyledButton {
                     Layout.alignment: Qt.AlignHCenter
-                    text: TrainingCtrl.isRunning ? "Wyłącz podgląd" : "Włącz podgląd"
+                    text: TrainingCtrl.isRunning ? (App.i18n["settings.cam.preview_off"] || "Wyłącz podgląd") : (App.i18n["settings.cam.preview_on"] || "Włącz podgląd")
                     onClicked: {
                         if (TrainingCtrl.isRunning) {
                             TrainingCtrl.stopTraining();
@@ -216,44 +209,47 @@ ScrollView {
         }
 
         SettingsGroup {
-            title: "DŹWIĘK"
+            title: App.i18n["settings.audio.title"] || "DŹWIĘK"
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 15
 
-                Label { text: "Urządzenie wyjściowe"; color: "#ccc"; font.pixelSize: 12 }
+                Label { text: App.i18n["settings.audio.output"] || "Urządzenie wyjściowe"; color: "#ccc"; font.pixelSize: 12 }
                 RowLayout {
                     spacing: 10
                     StyledComboBox {
                         Layout.fillWidth: true
-                        model: ["Głośniki", "Słuchawki"]
+                        model: App.audioOutputs
+                        onActivated: (index) => App.setOutputDevice(index)
                     }
                     StyledButton {
-                        text: "Test"
-                        onClicked: console.log("Test dźwięku...")
+                        text: App.i18n["settings.audio.test"] || "Test"
+                        onClicked: App.testAudio()
                     }
                 }
 
-                Label { text: "Urządzenie wejściowe"; color: "#ccc"; font.pixelSize: 12 }
+                Label { text: App.i18n["settings.audio.input"] || "Urządzenie wejściowe"; color: "#ccc"; font.pixelSize: 12 }
                 StyledComboBox {
                     Layout.fillWidth: true
-                    model: ["Mikrofon #1", "Mikrofon #2", "Mikrofon #3"]
+                    model: App.audioInputs
+                    onActivated: (index) => App.setInputDevice(index)
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 5
-                    Label { text: "Poziom wejścia"; color: "#888fb1"; font.pixelSize: 10 }
+                    Label { text: App.i18n["settings.audio.level"] || "Poziom wejścia"; color: "#888fb1"; font.pixelSize: 10 }
                     Rectangle {
                         Layout.fillWidth: true
                         height: 8
                         color: "#2b2d31"
                         radius: 4
                         Rectangle {
-                            width: parent.width * 0.45
+                            width: parent.width * App.audioLevel
                             height: parent.height
                             color: theme.blurple
                             radius: 4
+                            Behavior on width { NumberAnimation { duration: 50 } }
                         }
                     }
                 }
@@ -261,11 +257,14 @@ ScrollView {
         }
 
         SettingsGroup {
-            title: "JĘZYK"
+            title: App.i18n["settings.lang.title"] || "JĘZYK"
             StyledComboBox {
                 Layout.fillWidth: true
                 model: ["🇵🇱 Polski", "🇺🇸 English"]
-                onActivated: (index) => console.log("Wybrano język: " + textAt(index))
+                currentIndex: 0
+                onActivated: (index) => {
+                    App.setLanguage(index === 0 ? "pl" : "en")
+                }
             }
         }
     }
@@ -304,7 +303,6 @@ ScrollView {
                 verticalAlignment: Text.AlignVCenter
             }
             background: Rectangle {
-                // ZMIANA: Podświetlenie elementu listy na blurple
                 color: control.highlightedIndex === index ? theme.blurple : "transparent"
                 radius: 4
             }
@@ -341,7 +339,6 @@ ScrollView {
         background: Rectangle {
             implicitHeight: 40
             color: "#2b2d31"
-            // ZMIANA: Obramowanie zawsze blurple gdy aktywne lub hovered (opcjonalnie)
             border.color: (control.visualFocus || control.hovered) ? theme.blurple : "#35353d"
             radius: 8
         }
@@ -359,7 +356,6 @@ ScrollView {
         background: Rectangle {
             implicitWidth: 80
             implicitHeight: 40
-            // ZMIANA: Przycisk zmienia kolor na blurple po najechaniu lub naciśnięciu
             color: btnControl.pressed ? "#4752C4" : (btnControl.hovered ? theme.blurple : "#35353d")
             radius: 8
             border.color: "#45454d"
