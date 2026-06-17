@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Pliki audio generowane przez asystenta
+*.mp3
+*.wav

@@ -23,6 +23,21 @@ ApplicationWindow {
         fadeOut.restart();
     }
 
+    // --- INTEGRACJA ASYSTENTA GŁOSOWEGO Z INTERFEJSEM QML ---
+    Connections {
+        target: App
+
+        // Reakcja na komendy głosowe start/stop (Twoje zmiany)
+        function onPageChangeRequested(page) {
+            window.changePage(page)
+        }
+
+        // Zabezpieczenie dla klasycznej nawigacji
+        function onNavRequested(page) {
+            window.changePage(page)
+        }
+    }
+
     ListModel {
         id: navModel
         ListElement { icon: "🏠"; source: "MainMenu.qml"; name: "Home" }
@@ -39,41 +54,32 @@ ApplicationWindow {
         property string fontMain: "Segoe UI"
         property string fontTitle: "Segoe UI Black"
     }
-    SessionManager {
-        id: sessionManager
-    }
-    Connections {
-        target: App
-//       function onNavRequested(page) {
-//           if(loader.source.toString().indexOf("TrainingScreen") !== -1 && page !== "TrainingScreen.qml") {
-//               TrainingCtrl.stopTraining()
-//           }
-//           loader.source = page
-//       }
-    }
 
     RowLayout {
         anchors.fill: parent
         spacing: 0
 
+        // Pasek boczny (Sidebar)
         Rectangle {
             Layout.fillHeight: true
-            width: 80
+            width: 70
             color: theme.sidebar
 
-            Column {
-                anchors.centerIn: parent
-                spacing: 20
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.topMargin: 20
+                anchors.bottomMargin: 20
+                spacing: 15
 
                 Repeater {
                     model: navModel
-                    delegate: Button {
-                        text: model.icon
-                        width: 64
-                        height: 64
-                        font.pixelSize: 28
+                    delegate: Item {
+                        Layout.alignment: Qt.AlignHCenter
+                        width: 50
+                        height: 50
 
-                        background: Rectangle {
+                        Rectangle {
+                            anchors.fill: parent
                             color: (activePage === model.source)
                                 ? theme.blurple
                                 : (parent.hovered ? "#35353d" : "transparent")
@@ -85,22 +91,33 @@ ApplicationWindow {
                             }
                         }
 
-                        onClicked: changePage(model.source)
+                        Text {
+                            anchors.centerIn: parent
+                            text: model.icon
+                            font.pixelSize: 20
+                            color: "white"
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: changePage(model.source)
+                        }
                     }
                 }
+                Item { Layout.fillHeight: true }
             }
         }
 
-        // Main Content
+        // Główny kontener na ekrany (Loader)
         Loader {
             id: loader
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.margins: 20
-            source: "MainMenu.qml" // Initial screen
+            source: "MainMenu.qml"
             opacity: 1
 
-            // Smooth transition effect
             onLoaded: fadeIn.restart()
 
             NumberAnimation {
