@@ -15,7 +15,6 @@ ApplicationWindow {
 
     function changePage(newPage) {
         if (activePage === newPage) return;
-
         console.log("Otworzono " + newPage);
 
         activePage = newPage;
@@ -23,16 +22,16 @@ ApplicationWindow {
         fadeOut.restart();
     }
 
-    // --- INTEGRACJA ASYSTENTA GŁOSOWEGO Z INTERFEJSEM QML ---
+    // --- INTEGRACJA ASYSTENTA GŁOSOWEGO I SYGNAŁÓW Z INTERFEJSEM QML ---
     Connections {
         target: App
 
-        // Reakcja na komendy głosowe start/stop (Twoje zmiany)
+        // Reakcja na komendy głosowe start/stop strony treningowej
         function onPageChangeRequested(page) {
             window.changePage(page)
         }
 
-        // Zabezpieczenie dla klasycznej nawigacji
+        // Zabezpieczenie i obsługa tradycyjnej nawigacji z rdzenia aplikacji
         function onNavRequested(page) {
             window.changePage(page)
         }
@@ -101,7 +100,7 @@ ApplicationWindow {
                         MouseArea {
                             anchors.fill: parent
                             hoverEnabled: true
-                            onClicked: changePage(model.source)
+                            onClicked: window.changePage(model.source)
                         }
                     }
                 }

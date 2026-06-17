@@ -15,8 +15,8 @@ Item {
     property string mainSrc: camerasSwapped ? rawCam2Src : rawCam1Src
     property string secondarySrc: camerasSwapped ? rawCam1Src : rawCam2Src
 
-    property string mainLabel: camerasSwapped ? "KAMERA 2" : "KAMERA 1"
-    property string secondaryLabel: camerasSwapped ? "KAMERA 1" : "KAMERA 2"
+    property string mainLabel: camerasSwapped ? (App.i18n["train.cam2"] || "KAMERA 2") : (App.i18n["train.cam1"] || "KAMERA 1")
+    property string secondaryLabel: camerasSwapped ? (App.i18n["train.cam1"] || "KAMERA 1") : (App.i18n["train.cam2"] || "KAMERA 2")
 
     Component.onCompleted: TrainingCtrl.startTraining()
     Component.onDestruction: TrainingCtrl.stopTraining()
@@ -112,7 +112,7 @@ Item {
 
                     Text {
                         anchors.centerIn: parent
-                        text: boxMouseArea.containsMouse ? "KLIKNIJ, ABY ZMIENIĆ" : "CEL: " + TrainingCtrl.currentLetter.replace(/_/g, " ").toUpperCase()
+                        text: boxMouseArea.containsMouse ? (App.i18n["train.click_to_change"] || "KLIKNIJ, ABY ZMIENIĆ") : (App.i18n["train.pattern"] || "CEL") + ": " + TrainingCtrl.currentLetter.replace(/_/g, " ").toUpperCase()
                         color: "white"
                         font.pixelSize: 9
                         font.bold: true
@@ -191,7 +191,7 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "Trzymaj pozycję!"
+                    text: App.i18n["train.hold_pose"] || "Trzymaj pozycję!"
                     color: "white"
                     font.bold: true
                     font.pixelSize: 14
@@ -296,7 +296,6 @@ Item {
 
                 Text {
                     id: sideLabel
-                    anchors.centerIn: parent
                     text: root.secondaryLabel
                     color: theme.blurple
                     font.pixelSize: 10
@@ -334,7 +333,6 @@ Item {
             id: cam2Thumb
             width: 70
             height: 70
-            // Umiejscowione zaraz pod przyciskami (żeby na siebie nie wchodziły)
             anchors.top: parent.top
             anchors.right: parent.right
             anchors.topMargin: 84

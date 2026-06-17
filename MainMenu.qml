@@ -14,7 +14,7 @@ Item {
 
             Text {
                 Layout.alignment: Qt.AlignHCenter
-                text: "Menu Główne"
+                text: App.i18n["menu.main.title"] || "Menu Główne"
                 color: "white"
                 font.pixelSize: 24
                 font.family: "Segoe UI Black"
@@ -22,7 +22,7 @@ Item {
 
             Button {
                 Layout.alignment: Qt.AlignHCenter
-                text: "📷  Trenuj z kamerką"
+                text: App.i18n["menu.main.train"] || "📷  Trenuj z kamerką"
                 font.pixelSize: 16
 
                 contentItem: Text {

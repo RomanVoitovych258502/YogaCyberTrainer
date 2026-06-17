@@ -35,11 +35,12 @@ class VoiceAssistant:
         model_en_path: str = "models/en",
         preferred_language: str = "pl",
         sample_rate: int = 16000,
-        chunk_ms: int = 100,  # Zmniejszono z 250 na 100 dla lepszej czułości
+        chunk_ms: int = 100,
         energy_threshold: float = 450.0,
         silence_ms: int = 700,
         max_utterance_ms: int = 12000,
         texts_file: str = "texts.json",
+        play_callback: Optional[Callable[[str], None]] = None,
     ):
         self.commands = commands
         self.preferred_language = preferred_language
@@ -48,13 +49,13 @@ class VoiceAssistant:
         self.energy_threshold = energy_threshold
         self.silence_ms = silence_ms
         self.max_utterance_ms = max_utterance_ms
+        self.play_callback = play_callback
+        self.input_device: Optional[int] = None
 
         self.running = False
         self.audio_queue: "queue.Queue[bytes]" = queue.Queue()
 
-        # Bufor przed nagraniem (500ms zapasu: 5 paczek po 100ms)
         self.pre_speech_buffer = collections.deque(maxlen=5)
-
         self.texts = self._load_texts(texts_file)
 
         self.models = {
@@ -89,29 +90,34 @@ class VoiceAssistant:
             communicate = edge_tts.Communicate(text=text, voice=voice, rate="+20%")
             await communicate.save(mp3_path)
 
-            pygame.mixer.music.load(mp3_path)
-            pygame.mixer.music.play()
+            if self.play_callback:
+                # Jeśli podano callback (np. QMediaPlayer z PySide6), przekieruj odtwarzanie tam
+                self.play_callback(mp3_path)
+                # Dajemy chwilę na załadowanie pliku zanim przejdziemy dalej
+                await asyncio.sleep(1.5)
+            else:
+                pygame.mixer.music.load(mp3_path)
+                pygame.mixer.music.play()
 
-            while pygame.mixer.music.get_busy():
-                await asyncio.sleep(0.05)
+                while pygame.mixer.music.get_busy():
+                    await asyncio.sleep(0.05)
 
-            pygame.mixer.music.stop()
-
-            try:
-                pygame.mixer.music.unload()
-            except Exception:
-                pass
-
-            await asyncio.sleep(0.2)
+                pygame.mixer.music.stop()
+                try:
+                    pygame.mixer.music.unload()
+                except Exception:
+                    pass
+                await asyncio.sleep(0.2)
 
         finally:
-            for _ in range(20):
+            # Opóźnione usuwanie pliku tymczasowego (przydatne przy asynchronicznym QMediaPlayer)
+            for _ in range(30):
                 try:
                     if os.path.exists(mp3_path):
                         os.remove(mp3_path)
                     break
                 except PermissionError:
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.2)
 
     def speak(self, text: str, language: str = "pl") -> None:
         asyncio.run(self._speak_async(text, language))
@@ -171,27 +177,21 @@ class VoiceAssistant:
 
     def handle(self, text: str) -> bool:
         normalized_text = normalize_text(text)
-
         for phrase, func in self.commands.items():
             if normalize_text(phrase) in normalized_text:
                 func()
                 return True
-
         return False
 
     def _process_utterance(self, raw_bytes: bytes) -> None:
         if not raw_bytes:
             return
 
-        # --- DEBUG AUDIO ---
-        # Zapisuje to, co usłyszał asystent, do pliku .wav w folderze skryptu.
-        # Odtwórz ten plik, aby sprawdzić czy dźwięk nie jest zniekształcony/ucięty.
         try:
             with open("debug_audio.wav", "wb") as f:
                 f.write(self._raw_to_wav_bytes(raw_bytes))
         except Exception as e:
             print("BŁĄD ZAPISU DEBUG AUDIO:", e)
-        # --------------------
 
         order = [
             self.preferred_language,
@@ -208,62 +208,62 @@ class VoiceAssistant:
                 continue
 
             print(f"HEARD [{lang}]:", text)
-
             if self.handle(text):
                 return
 
     def loop(self) -> None:
         blocksize = int(self.sample_rate * self.chunk_ms / 1000)
 
-        speech_chunks = []
-        in_speech = False
-        silence_acc_ms = 0
-        speech_acc_ms = 0
+        while self.running:
+            speech_chunks = []
+            in_speech = False
+            silence_acc_ms = 0
+            speech_acc_ms = 0
+            current_device = self.input_device
 
-        try:
-            with sd.RawInputStream(
-                samplerate=self.sample_rate,
-                blocksize=blocksize,
-                dtype="int16",
-                channels=1,
-                callback=self._audio_callback,
-            ):
-                while self.running:
-                    try:
-                        data = self.audio_queue.get(timeout=0.5)
-                    except queue.Empty:
-                        continue
+            try:
+                with sd.RawInputStream(
+                    samplerate=self.sample_rate,
+                    blocksize=blocksize,
+                    dtype="int16",
+                    channels=1,
+                    device=current_device,
+                    callback=self._audio_callback,
+                ):
+                    while self.running and current_device == self.input_device:
+                        try:
+                            data = self.audio_queue.get(timeout=0.5)
+                        except queue.Empty:
+                            continue
 
-                    samples = np.frombuffer(data, dtype=np.int16).astype(np.float32)
-                    rms = float(np.sqrt(np.mean(samples * samples))) if samples.size else 0.0
+                        samples = np.frombuffer(data, dtype=np.int16).astype(np.float32)
+                        rms = float(np.sqrt(np.mean(samples * samples))) if samples.size else 0.0
 
-                    if rms >= self.energy_threshold:
-                        if not in_speech:
-                            in_speech = True
-                            # Zgarnia ułamek sekundy z przeszłości, żeby nie obciąć pierwszej litery
-                            speech_chunks = list(self.pre_speech_buffer)
+                        if rms >= self.energy_threshold:
+                            if not in_speech:
+                                in_speech = True
+                                speech_chunks = list(self.pre_speech_buffer)
+                                silence_acc_ms = 0
+                                speech_acc_ms = len(speech_chunks) * self.chunk_ms
+
+                            speech_chunks.append(data)
+                            speech_acc_ms += self.chunk_ms
                             silence_acc_ms = 0
-                            speech_acc_ms = len(speech_chunks) * self.chunk_ms
 
-                        speech_chunks.append(data)
-                        speech_acc_ms += self.chunk_ms
-                        silence_acc_ms = 0
+                        elif in_speech:
+                            speech_chunks.append(data)
+                            speech_acc_ms += self.chunk_ms
+                            silence_acc_ms += self.chunk_ms
 
-                    elif in_speech:
-                        speech_chunks.append(data)
-                        speech_acc_ms += self.chunk_ms
-                        silence_acc_ms += self.chunk_ms
+                            if silence_acc_ms >= self.silence_ms or speech_acc_ms >= self.max_utterance_ms:
+                                self._process_utterance(b"".join(speech_chunks))
+                                speech_chunks = []
+                                in_speech = False
+                                silence_acc_ms = 0
+                                speech_acc_ms = 0
+                        else:
+                            self.pre_speech_buffer.append(data)
 
-                        if silence_acc_ms >= self.silence_ms or speech_acc_ms >= self.max_utterance_ms:
-                            self._process_utterance(b"".join(speech_chunks))
-                            speech_chunks = []
-                            in_speech = False
-                            silence_acc_ms = 0
-                            speech_acc_ms = 0
-                    else:
-                        # Stale aktualizuje bufor tła, kiedy nic nie mówisz
-                        self.pre_speech_buffer.append(data)
-
-        except Exception as e:
-            print("ERROR:", e)
-            self.running = False
+            except Exception as e:
+                print("ERROR IN AUDIO STREAM LOOP:", e)
+                time.sleep(1)  # Zapobiega zapętleniu błędu w nieskończoność
