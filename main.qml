@@ -39,7 +39,9 @@ ApplicationWindow {
         property string fontMain: "Segoe UI"
         property string fontTitle: "Segoe UI Black"
     }
-
+    SessionManager {
+        id: sessionManager
+    }
     Connections {
         target: App
 //       function onNavRequested(page) {
