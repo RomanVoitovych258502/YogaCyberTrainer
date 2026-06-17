@@ -4,7 +4,8 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 
-from screen_training import TrainingController, VideoProvider
+from screen_training import TrainingController
+from video_providers import VideoProvider, VideoProvider2
 
 
 class AppCore(QObject):
@@ -46,7 +47,10 @@ if __name__ == "__main__":
     video_provider = VideoProvider()
     engine.addImageProvider("video", video_provider)
 
-    training_ctrl = TrainingController(app_core, video_provider)
+    video_provider2 = VideoProvider2()
+    engine.addImageProvider("video2", video_provider2)
+
+    training_ctrl = TrainingController(app_core, video_provider, video_provider2)
 
     ctx = engine.rootContext()
     ctx.setContextProperty("App", app_core)
